@@ -2,15 +2,26 @@ package idraw
 
 import (
 	"image"
+	"image/color"
 	"image/draw"
 
 	"github.com/nfnt/resize"
 )
 
 func MakeMeme(img image.Image, text string) (image.Image, error) {
+	// Text
 	textImg, err := DrawText(text, &TextOptions{
 		Size:     72,
 		MaxWidth: 600,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Watermark
+	watermark, err := DrawText("@durich_bot", &TextOptions{
+		Color: color.Alpha{A: 128},
+		Size:  16,
 	})
 	if err != nil {
 		return nil, err
@@ -38,6 +49,15 @@ func MakeMeme(img image.Image, text string) (image.Image, error) {
 		drawRect.Max.X+3,
 		drawRect.Max.Y+3,
 	), &BordersOptions{Size: 3})
+
+	// Watermark
+	x0 = drawRect.Max.X - watermark.Bounds().Dx()
+	draw.Draw(meme, image.Rect(
+		x0,
+		drawRect.Min.Y-16-16,
+		x0+watermark.Bounds().Dx(),
+		drawRect.Min.Y-16-16+watermark.Bounds().Dy(),
+	), watermark, image.ZP, draw.Over)
 
 	// Text
 	x0 = (meme.Bounds().Dx() - textImg.Bounds().Dx()) / 2

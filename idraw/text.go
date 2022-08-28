@@ -3,6 +3,7 @@ package idraw
 import (
 	"errors"
 	"image"
+	"image/color"
 	"math"
 
 	"golang.org/x/image/font"
@@ -13,7 +14,7 @@ import (
 
 type TextOptions struct {
 	Font     *sfnt.Font
-	Color    *image.Uniform
+	Color    color.Color
 	Size     float64
 	MaxWidth int
 }
@@ -21,7 +22,7 @@ type TextOptions struct {
 func defaultTextOptions(base *TextOptions) *TextOptions {
 	opts := &TextOptions{
 		Font:  defaultFont,
-		Color: image.White,
+		Color: color.White,
 		Size:  12,
 	}
 	if base != nil {
@@ -65,7 +66,7 @@ func DrawText(text string, opts *TextOptions) (image.Image, error) {
 			Dst: image.NewRGBA(
 				image.Rect(0, 0, width, height),
 			),
-			Src:  opts.Color,
+			Src:  image.NewUniform(opts.Color),
 			Face: face,
 			Dot:  fixed.P(0, face.Metrics().Ascent.Ceil()),
 		}
