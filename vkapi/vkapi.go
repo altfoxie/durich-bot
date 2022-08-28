@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -53,7 +54,7 @@ type PhotoSize struct {
 	URL    string `json:"url"`
 }
 
-func SearchPhoto(query string) (*Photo, error) {
+func SearchRandomPhoto(query string) (*Photo, error) {
 	resp, err := http.Get("https://api.vk.com/method/photos.search?" + url.Values{
 		"access_token": {os.Getenv("VK_TOKEN")},
 		"q":            {query},
@@ -77,5 +78,5 @@ func SearchPhoto(query string) (*Photo, error) {
 		return nil, errors.New("vkapi: no photos found")
 	}
 
-	return &r.Response.Items[0], nil
+	return &r.Response.Items[rand.Intn(len(r.Response.Items))], nil
 }

@@ -16,7 +16,7 @@ import (
 )
 
 func (b *Bot) onText(message *telego.Message) error {
-	photo, err := vkapi.SearchPhoto(message.Text)
+	photo, err := vkapi.SearchRandomPhoto(message.Text)
 	if err != nil {
 		return err
 	}
