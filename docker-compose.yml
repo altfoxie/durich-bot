@@ -1,0 +1,11 @@
+version: '3.7'
+services:
+  bot:
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - TOKEN=${TOKEN}
+      - VK_TOKEN=${VK_TOKEN}
+      - TELEGO_DEBUG=${TELEGO_DEBUG}

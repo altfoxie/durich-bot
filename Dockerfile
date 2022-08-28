@@ -8,12 +8,12 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o bot
+RUN go build -o durich-bot
 
 FROM alpine
 
 WORKDIR /app
 
-COPY --from=builder /src/bot .
+COPY --from=builder /src/durich-bot .
 
-ENTRYPOINT ["/app/bot"]
+ENTRYPOINT ["/app/durich-bot"]

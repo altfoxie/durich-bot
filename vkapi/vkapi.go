@@ -57,7 +57,7 @@ func SearchPhoto(query string) (*Photo, error) {
 	resp, err := http.Get("https://api.vk.com/method/photos.search?" + url.Values{
 		"access_token": {os.Getenv("VK_TOKEN")},
 		"q":            {query},
-		"count":        {"1"},
+		"count":        {"5"},
 		"v":            {"5.123"},
 	}.Encode())
 	if err != nil {

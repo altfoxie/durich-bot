@@ -1,6 +1,6 @@
 module github.com/altfoxie/durich-bot
 
-go 1.19
+go 1.18
 
 require (
 	github.com/mymmrac/telego v0.16.1
