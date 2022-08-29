@@ -37,6 +37,8 @@ func (b *Bot) Start() error {
 	bh.Handle(wrapMessageHandler(b.onStart), th.CommandEqual("start"))
 	bh.Handle(wrapMessageHandler(b.onText), th.AnyMessageWithText())
 
+	bh.Handle(wrapInlineQueryHandler(b.onInlineQuery), th.AnyInlineQuery())
+
 	bh.Start()
 	return nil
 }
@@ -46,7 +48,17 @@ type messageHandler = func(message *telego.Message) error
 func wrapMessageHandler(h messageHandler) th.Handler {
 	return func(_ *telego.Bot, update telego.Update) {
 		if err := h(update.Message); err != nil {
-			log.Println("Handler error:", err)
+			log.Println("Message handler error:", err)
+		}
+	}
+}
+
+type inlineQueryHandler = func(query *telego.InlineQuery) error
+
+func wrapInlineQueryHandler(h inlineQueryHandler) th.Handler {
+	return func(_ *telego.Bot, update telego.Update) {
+		if err := h(update.InlineQuery); err != nil {
+			log.Println("Inline query handler error:", err)
 		}
 	}
 }
