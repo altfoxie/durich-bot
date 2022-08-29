@@ -1,17 +1,12 @@
 package idraw
 
 import (
-	"bytes"
-	_ "embed"
-	"github.com/nfnt/resize"
 	"image"
 	"image/color"
 	"image/draw"
-	"image/png"
-)
 
-//go:embed banner.png
-var banner []byte
+	"github.com/nfnt/resize"
+)
 
 func MakeMeme(img image.Image, text string) (image.Image, error) {
 	// Text
@@ -32,12 +27,8 @@ func MakeMeme(img image.Image, text string) (image.Image, error) {
 		return nil, err
 	}
 
-	meme := image.NewRGBA(image.Rect(0, 0, 800, 800))
+	meme := image.NewRGBA(image.Rect(0, 0, 800, 600))
 	draw.Draw(meme, meme.Bounds(), image.Black, image.ZP, draw.Src)
-
-	// 1XBET BANNER XDD
-	banner, _ := png.Decode(bytes.NewReader(banner))
-	draw.Draw(meme, image.Rect(0, 600, 800, 800), banner, image.ZP, draw.Over)
 
 	// Base image
 	img = resize.Resize(600, 400, img, resize.Bicubic)
