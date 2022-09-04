@@ -1,10 +1,11 @@
 package bot
 
 import (
+	"log"
+
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
 	"github.com/samber/lo"
-	"log"
 )
 
 func (b *Bot) onText(message *telego.Message) error {

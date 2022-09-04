@@ -3,12 +3,14 @@ package bot
 import (
 	"bytes"
 	"errors"
-	"github.com/altfoxie/durich-bot/idraw"
-	"github.com/altfoxie/durich-bot/vkapi"
 	"image/jpeg"
 	"image/png"
 	"io"
 	"net/http"
+	"strings"
+
+	"github.com/altfoxie/durich-bot/idraw"
+	"github.com/altfoxie/durich-bot/vkapi"
 )
 
 var (
@@ -44,7 +46,7 @@ func errorIs(err, target error) bool {
 }
 
 func makeMeme(query string) (io.Reader, error) {
-	photo, err := vkapi.SearchRandomPhoto(query)
+	photo, err := vkapi.SearchRandomPhoto(strings.Split(query, "\n")[0])
 	if err != nil {
 		return nil, wrapError(err, errImageNotFound)
 	}

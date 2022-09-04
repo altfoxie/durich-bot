@@ -13,7 +13,8 @@ func (b *Bot) onInlineQuery(query *telego.InlineQuery) error {
 
 	if query.Query == "" {
 		return b.AnswerInlineQuery(
-			answer.WithSwitchPmText("напиши прекол ж есть").WithSwitchPmParameter("lol"),
+			answer.WithSwitchPmText("напиши прекол ж есть").
+				WithSwitchPmParameter("lol"),
 		)
 	}
 
@@ -41,7 +42,10 @@ func (b *Bot) onInlineQuery(query *telego.InlineQuery) error {
 	}
 
 	msg, err := b.SendPhoto(
-		tu.Photo(tu.Username(os.Getenv("CHANNEL_ID")), tu.File(tu.NameReader(meme, "meme.png"))),
+		tu.Photo(
+			tu.Username(os.Getenv("CHANNEL_ID")),
+			tu.File(tu.NameReader(meme, "meme.png")),
+		),
 	)
 	if err != nil {
 		return err

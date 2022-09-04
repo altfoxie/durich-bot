@@ -31,8 +31,18 @@ func DrawBorders(img draw.Image, rect image.Rectangle, opts *BordersOptions) {
 	borders := []image.Rectangle{
 		image.Rect(rect.Min.X, rect.Min.Y-opts.Size, rect.Max.X, rect.Min.Y),
 		image.Rect(rect.Max.X, rect.Max.Y+opts.Size, rect.Min.X, rect.Max.Y),
-		image.Rect(rect.Min.X-opts.Size, rect.Min.Y-opts.Size, rect.Min.X, rect.Max.Y+opts.Size),
-		image.Rect(rect.Max.X+opts.Size, rect.Min.Y-opts.Size, rect.Max.X, rect.Max.Y+opts.Size),
+		image.Rect(
+			rect.Min.X-opts.Size,
+			rect.Min.Y-opts.Size,
+			rect.Min.X,
+			rect.Max.Y+opts.Size,
+		),
+		image.Rect(
+			rect.Max.X+opts.Size,
+			rect.Min.Y-opts.Size,
+			rect.Max.X,
+			rect.Max.Y+opts.Size,
+		),
 	}
 	for _, rect := range borders {
 		draw.Draw(img, rect, opts.Color, image.ZP, draw.Over)
