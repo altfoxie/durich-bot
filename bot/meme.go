@@ -65,7 +65,7 @@ func (b *Bot) onMeme(message *telego.Message) error {
 			message.Caption,
 		)
 	} else {
-		meme, err = makeMemeFromURL(message.Text, "")
+		meme, err = makeMeme(message.Text)
 	}
 	if err != nil {
 		errText := "🤯 неизвестная ошибка ж есть"
