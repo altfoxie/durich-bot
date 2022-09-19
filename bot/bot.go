@@ -35,7 +35,10 @@ func (b *Bot) Start() error {
 	}
 
 	bh.Handle(wrapMessageHandler(b.onStart), th.CommandEqual("start"))
-	bh.Handle(wrapMessageHandler(b.onText), th.AnyMessageWithText())
+	bh.Handle(wrapMessageHandler(b.onMeme), func(update telego.Update) bool {
+		return update.Message != nil && len(update.Message.Photo) > 0
+	})
+	bh.Handle(wrapMessageHandler(b.onMeme), th.AnyMessageWithText())
 
 	bh.Handle(wrapInlineQueryHandler(b.onInlineQuery), th.AnyInlineQuery())
 

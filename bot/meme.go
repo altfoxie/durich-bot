@@ -3,14 +3,19 @@ package bot
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"image/jpeg"
 	"image/png"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/altfoxie/durich-bot/idraw"
 	"github.com/altfoxie/durich-bot/vkapi"
+	"github.com/mymmrac/telego"
+	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/samber/lo"
 )
 
 var (
@@ -45,6 +50,64 @@ func errorIs(err, target error) bool {
 	return errors.Is(err, target)
 }
 
+func (b *Bot) onMeme(message *telego.Message) error {
+	msg, err := b.SendMessage(
+		tu.Message(tu.ID(message.Chat.ID), "😸 ща прикол сделаю...."),
+	)
+	if err != nil {
+		return err
+	}
+
+	var meme io.Reader
+	if len(message.Photo) > 0 {
+		meme, err = b.makeMemeFromPhoto(
+			message.Photo[len(message.Photo)-1],
+			message.Caption,
+		)
+	} else {
+		meme, err = makeMemeFromURL(message.Text, "")
+	}
+	if err != nil {
+		errText := "🤯 неизвестная ошибка ж есть"
+		switch {
+		case errorIs(err, errImageNotFound):
+			errText = "🤯 не нашел картинку ж есть"
+		case errorIs(err, errBestSizeNotFound):
+			errText = "🤯 не нашел ссылку ж есть"
+		case errorIs(err, errImageGet):
+			errText = "🤯 не скачалось ж есть"
+		case errorIs(err, errDecode):
+			errText = "🤯 не отдекодилось ж есть"
+		case errorIs(err, errMeme):
+			errText = "🤯 мем не получился ж есть"
+		case errorIs(err, errEncode):
+			errText = "🤯 не отдекодилось ж есть"
+		}
+		if _, err := b.EditMessageText(&telego.EditMessageTextParams{
+			ChatID:    tu.ID(msg.Chat.ID),
+			MessageID: msg.MessageID,
+			Text:      errText,
+		}); err != nil {
+			return err
+		}
+		return err
+	}
+
+	if err = b.DeleteMessage(&telego.DeleteMessageParams{
+		ChatID:    tu.ID(msg.Chat.ID),
+		MessageID: msg.MessageID,
+	}); err != nil {
+		log.Println("DeleteMessage error:", err)
+	}
+
+	return lo.T2(b.SendPhoto(
+		tu.Photo(
+			tu.ID(message.Chat.ID),
+			tu.File(tu.NameReader(meme, "meme.png")),
+		).WithReplyToMessageID(message.MessageID),
+	)).B
+}
+
 func makeMeme(query string) (io.Reader, error) {
 	photo, err := vkapi.SearchRandomPhoto(strings.Split(query, "\n")[0])
 	if err != nil {
@@ -56,7 +119,32 @@ func makeMeme(query string) (io.Reader, error) {
 		return nil, wrapError(err, errBestSizeNotFound)
 	}
 
-	resp, err := http.Get(best.URL)
+	return makeMemeFromURL(best.URL, query)
+}
+
+func (b *Bot) makeMemeFromPhoto(
+	photo telego.PhotoSize,
+	text string,
+) (io.Reader, error) {
+	file, err := b.GetFile(&telego.GetFileParams{
+		FileID: photo.FileID,
+	})
+	if err != nil {
+		return nil, wrapError(err, errImageGet)
+	}
+
+	return makeMemeFromURL(
+		fmt.Sprintf(
+			"https://api.telegram.org/file/bot%s/%s",
+			b.Token(),
+			file.FilePath,
+		),
+		text,
+	)
+}
+
+func makeMemeFromURL(url, text string) (io.Reader, error) {
+	resp, err := http.Get(url)
 	if err != nil {
 		return nil, wrapError(err, errImageGet)
 	}
@@ -66,7 +154,7 @@ func makeMeme(query string) (io.Reader, error) {
 		return nil, wrapError(err, errDecode)
 	}
 
-	meme, err := idraw.MakeMeme(img, query)
+	meme, err := idraw.MakeMeme(img, text)
 	if err != nil {
 		return nil, wrapError(err, errMeme)
 	}
