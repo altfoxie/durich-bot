@@ -46,15 +46,26 @@ func MakeMeme(img image.Image, text string) (image.Image, error) {
 		return nil, err
 	}
 
-	height := 600
-	if secondLineImg != nil {
-		height = 650
+	imgWidth, imgHeight := img.Bounds().Dx(), img.Bounds().Dy()
+	if imgWidth > 600 {
+		imgHeight -= imgWidth - 600
+		imgWidth = 600
 	}
+	if imgWidth < 300 {
+		imgHeight += 300 - imgWidth
+		imgWidth = 300
+	}
+
+	height := imgHeight + 200
+	if secondLineImg != nil {
+		height += 50
+	}
+
 	meme := image.NewRGBA(image.Rect(0, 0, 800, height))
 	draw.Draw(meme, meme.Bounds(), image.Black, image.ZP, draw.Src)
 
 	// Base image
-	img = resize.Resize(600, 400, img, resize.Bicubic)
+	img = resize.Resize(uint(imgWidth), uint(imgHeight), img, resize.Bicubic)
 	x0 := (meme.Bounds().Dx() - img.Bounds().Dx()) / 2
 	drawRect := image.Rect(x0, 50, x0+img.Bounds().Dx(), 50+img.Bounds().Max.Y)
 	draw.Draw(
