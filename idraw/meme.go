@@ -46,8 +46,17 @@ func MakeMeme(img image.Image, text string) (image.Image, error) {
 		return nil, err
 	}
 
-	scale := float64(600) / float64(img.Bounds().Dx())
-	imgWidth, imgHeight := 600, int(float64(img.Bounds().Dy())*scale)
+	imgWidth, imgHeight := img.Bounds().Dx(), img.Bounds().Dy()
+	scale := float64(600) / float64(imgWidth)
+	imgWidth, imgHeight = int(
+		float64(imgWidth)*scale,
+	), int(
+		float64(imgHeight)*scale,
+	)
+	if imgWidth < 300 {
+		imgWidth = 300
+	}
+
 	height := imgHeight + 200
 	if secondLineImg != nil {
 		height += 50
