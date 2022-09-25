@@ -52,7 +52,8 @@ func errorIs(err, target error) bool {
 
 func (b *Bot) onMeme(message *telego.Message) error {
 	msg, err := b.SendMessage(
-		tu.Message(tu.ID(message.Chat.ID), "😸 ща прикол сделаю...."),
+		tu.Message(tu.ID(message.Chat.ID), "😸 ща прикол сделаю....").
+			WithReplyToMessageID(message.MessageID),
 	)
 	if err != nil {
 		return err
