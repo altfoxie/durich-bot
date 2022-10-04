@@ -10,9 +10,11 @@ require (
 )
 
 require (
+	github.com/WelcomerTeam/WelcomerImages v0.0.0-20210412213632-592b805315f1 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/fasthttp/router v1.4.11 // indirect
 	github.com/goccy/go-json v0.9.11 // indirect
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/klauspost/compress v1.15.0 // indirect
 	github.com/savsgio/gotils v0.0.0-20220530130905-52f3993e8d6d // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
