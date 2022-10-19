@@ -4,15 +4,17 @@ import (
 	"log"
 	"os"
 
+	"github.com/boltdb/bolt"
 	"github.com/mymmrac/telego"
 	th "github.com/mymmrac/telego/telegohandler"
 )
 
 type Bot struct {
 	*telego.Bot
+	db *bolt.DB
 }
 
-func New(token string) (*Bot, error) {
+func New(token string, db *bolt.DB) (*Bot, error) {
 	bot, err := telego.NewBot(
 		token,
 		telego.WithDefaultLogger(os.Getenv("TELEGO_DEBUG") != "", true),
@@ -20,7 +22,7 @@ func New(token string) (*Bot, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Bot{bot}, nil
+	return &Bot{bot, db}, nil
 }
 
 func (b *Bot) Start() error {
@@ -35,6 +37,7 @@ func (b *Bot) Start() error {
 	}
 
 	bh.Handle(wrapMessageHandler(b.onStart), th.CommandEqual("start"))
+	bh.Handle(wrapMessageHandler(b.onZhmyh), th.CommandEqual("zhmyh"))
 	bh.Handle(wrapMessageHandler(b.onMeme), func(update telego.Update) bool {
 		return update.Message != nil && len(update.Message.Photo) > 0
 	})

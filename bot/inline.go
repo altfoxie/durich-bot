@@ -3,7 +3,9 @@ package bot
 import (
 	"errors"
 	"os"
+	"strconv"
 
+	"github.com/boltdb/bolt"
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
 )
@@ -18,7 +20,18 @@ func (b *Bot) onInlineQuery(query *telego.InlineQuery) error {
 		)
 	}
 
-	meme, err := makeMeme(query.Query)
+	zhmyh := false
+	b.db.View(func(tx *bolt.Tx) error {
+		if bk := tx.Bucket([]byte("zhmyh")); bk != nil {
+			id := []byte(strconv.FormatInt(query.From.ID, 10))
+			if v := bk.Get(id); len(v) > 0 {
+				zhmyh = v[0] == 1
+			}
+		}
+		return nil
+	})
+
+	meme, err := makeMeme(query.Query, zhmyh)
 	if err != nil {
 		errText := "неизвестная ошибка ж есть"
 		switch {

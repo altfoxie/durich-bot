@@ -9,12 +9,15 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/altfoxie/durich-bot/idraw"
 	"github.com/altfoxie/durich-bot/vkapi"
+	"github.com/boltdb/bolt"
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/nfnt/resize"
 	"github.com/samber/lo"
 )
 
@@ -59,14 +62,26 @@ func (b *Bot) onMeme(message *telego.Message) error {
 		return err
 	}
 
+	zhmyh := false
+	b.db.View(func(tx *bolt.Tx) error {
+		if bk := tx.Bucket([]byte("zhmyh")); bk != nil {
+			id := []byte(strconv.FormatInt(message.From.ID, 10))
+			if v := bk.Get(id); len(v) > 0 {
+				zhmyh = v[0] == 1
+			}
+		}
+		return nil
+	})
+
 	var meme io.Reader
 	if len(message.Photo) > 0 {
 		meme, err = b.makeMemeFromPhoto(
 			message.Photo[len(message.Photo)-1],
 			message.Caption,
+			zhmyh,
 		)
 	} else {
-		meme, err = makeMeme(message.Text)
+		meme, err = makeMeme(message.Text, zhmyh)
 	}
 	if err != nil {
 		errText := "🤯 неизвестная ошибка ж есть"
@@ -109,7 +124,7 @@ func (b *Bot) onMeme(message *telego.Message) error {
 	)).B
 }
 
-func makeMeme(query string) (io.Reader, error) {
+func makeMeme(query string, zhmyh bool) (io.Reader, error) {
 	photo, err := vkapi.SearchRandomPhoto(strings.Split(query, "\n")[0])
 	if err != nil {
 		return nil, wrapError(err, errImageNotFound)
@@ -120,12 +135,13 @@ func makeMeme(query string) (io.Reader, error) {
 		return nil, wrapError(err, errBestSizeNotFound)
 	}
 
-	return makeMemeFromURL(best.URL, query)
+	return makeMemeFromURL(best.URL, query, zhmyh)
 }
 
 func (b *Bot) makeMemeFromPhoto(
 	photo telego.PhotoSize,
 	text string,
+	zhmyh bool,
 ) (io.Reader, error) {
 	file, err := b.GetFile(&telego.GetFileParams{
 		FileID: photo.FileID,
@@ -141,10 +157,11 @@ func (b *Bot) makeMemeFromPhoto(
 			file.FilePath,
 		),
 		text,
+		zhmyh,
 	)
 }
 
-func makeMemeFromURL(url, text string) (io.Reader, error) {
+func makeMemeFromURL(url, text string, zhmyh bool) (io.Reader, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, wrapError(err, errImageGet)
@@ -153,6 +170,10 @@ func makeMemeFromURL(url, text string) (io.Reader, error) {
 	img, err := jpeg.Decode(resp.Body)
 	if err != nil {
 		return nil, wrapError(err, errDecode)
+	}
+
+	if zhmyh {
+		img = resize.Resize(600, 400, img, resize.Bilinear)
 	}
 
 	meme, err := idraw.MakeMeme(img, text)
