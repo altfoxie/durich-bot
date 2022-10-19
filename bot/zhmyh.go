@@ -18,15 +18,12 @@ func (b *Bot) onZhmyh(message *telego.Message) error {
 
 		id := []byte(strconv.FormatInt(message.From.ID, 10))
 		v := bk.Get(id)
-		if v == nil {
-			v = []byte{0}
-		}
 
 		msg := "теперь ты жмыхаешь картинки"
-		if v[0] == 0 {
-			v[0] = 1
+		if v == nil || v[0] == 0 {
+			v = []byte{1}
 		} else {
-			v[0] = 0
+			v = []byte{0}
 			msg = "больше ты не жмыхаешь картинки"
 		}
 
