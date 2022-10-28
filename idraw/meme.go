@@ -9,12 +9,12 @@ import (
 	"github.com/nfnt/resize"
 )
 
-func MakeMeme(img image.Image, text string) (image.Image, error) {
-	lines := strings.Split(text, "\n")
-	firstLine, secondLine := lines[0], ""
-	if len(lines) > 1 {
-		secondLine = strings.Join(lines[1:], " ")
-	}
+func MakeMeme(
+	img image.Image,
+	firstLine, secondLine string,
+	watermark bool,
+) (image.Image, error) {
+	secondLine = strings.ReplaceAll(secondLine, "\n", " ")
 
 	// Text (first line)
 	firstLineImg, err := DrawText(firstLine, &TextOptions{
@@ -38,12 +38,15 @@ func MakeMeme(img image.Image, text string) (image.Image, error) {
 	}
 
 	// Watermark
-	watermark, err := DrawText("@durich_bot", &TextOptions{
-		Color: color.Alpha{A: 100},
-		Size:  16,
-	})
-	if err != nil {
-		return nil, err
+	var watermarkImg image.Image
+	if watermark {
+		watermarkImg, err = DrawText("@durich_bot", &TextOptions{
+			Color: color.Alpha{A: 100},
+			Size:  16,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	imgWidth, imgHeight := img.Bounds().Dx(), img.Bounds().Dy()
@@ -86,13 +89,15 @@ func MakeMeme(img image.Image, text string) (image.Image, error) {
 	), &BordersOptions{Size: 3})
 
 	// Watermark
-	x0 = drawRect.Max.X - watermark.Bounds().Dx()
-	draw.Draw(meme, image.Rect(
-		x0,
-		drawRect.Min.Y-16-16,
-		x0+watermark.Bounds().Dx(),
-		drawRect.Min.Y-16-16+watermark.Bounds().Dy(),
-	), watermark, image.ZP, draw.Over)
+	if watermark {
+		x0 = drawRect.Max.X - watermarkImg.Bounds().Dx()
+		draw.Draw(meme, image.Rect(
+			x0,
+			drawRect.Min.Y-16-16,
+			x0+watermarkImg.Bounds().Dx(),
+			drawRect.Min.Y-16-16+watermarkImg.Bounds().Dy(),
+		), watermarkImg, image.ZP, draw.Over)
+	}
 
 	// Text (first line)
 	x0 = (meme.Bounds().Dx() - firstLineImg.Bounds().Dx()) / 2

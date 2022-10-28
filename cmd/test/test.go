@@ -26,7 +26,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	meme, err := idraw.MakeMeme(img, os.Args[2])
+	meme, err := idraw.MakeMeme(img, os.Args[2], "", true)
 	if err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)

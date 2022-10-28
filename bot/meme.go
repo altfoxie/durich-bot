@@ -176,13 +176,23 @@ func makeMemeFromURL(url, text string, zhmyh bool) (io.Reader, error) {
 		img = resize.Resize(600, 400, img, resize.Bilinear)
 	}
 
-	meme, err := idraw.MakeMeme(img, text)
-	if err != nil {
-		return nil, wrapError(err, errMeme)
+	layers := strings.Split(text, "\n\n")
+	fmt.Println(layers)
+
+	for i, layer := range layers {
+		lines := strings.SplitN(layer, "\n", 2)
+		secondLine := ""
+		if len(lines) > 1 {
+			secondLine = lines[1]
+		}
+
+		if img, err = idraw.MakeMeme(img, lines[0], secondLine, i == len(layers)-1); err != nil {
+			return nil, wrapError(err, errMeme)
+		}
 	}
 
 	buf := new(bytes.Buffer)
-	if err := png.Encode(buf, meme); err != nil {
+	if err := png.Encode(buf, img); err != nil {
 		return nil, wrapError(err, errEncode)
 	}
 
