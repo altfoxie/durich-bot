@@ -3,9 +3,7 @@ package bot
 import (
 	"errors"
 	"os"
-	"strconv"
 
-	"github.com/boltdb/bolt"
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
 )
@@ -20,18 +18,8 @@ func (b *Bot) onInlineQuery(query *telego.InlineQuery) error {
 		)
 	}
 
-	zhmyh := false
-	b.db.View(func(tx *bolt.Tx) error {
-		if bk := tx.Bucket([]byte("zhmyh")); bk != nil {
-			id := []byte(strconv.FormatInt(query.From.ID, 10))
-			if v := bk.Get(id); len(v) > 0 {
-				zhmyh = v[0] == 1
-			}
-		}
-		return nil
-	})
-
-	meme, err := makeMeme(query.Query, zhmyh)
+	zhmyh := b.getToggleValue("zhmyh", query.From.ID)
+	meme, buttonLink, err := makeMeme(query.Query, zhmyh)
 	if err != nil {
 		errText := "неизвестная ошибка ж есть"
 		switch {
@@ -67,7 +55,15 @@ func (b *Bot) onInlineQuery(query *telego.InlineQuery) error {
 		return errors.New("no photo in message")
 	}
 
+	result := tu.ResultCachedPhoto("meme", msg.Photo[0].FileID)
+	if buttonLink != "" && b.getToggleValue("link", query.From.ID, true) {
+		result = result.WithReplyMarkup(tu.InlineKeyboard(
+			tu.InlineKeyboardRow(
+				tu.InlineKeyboardButton("🔗 Ссылка").WithURL(buttonLink),
+			),
+		))
+	}
 	return b.AnswerInlineQuery(
-		answer.WithResults(tu.ResultCachedPhoto("meme", msg.Photo[0].FileID)),
+		answer.WithResults(result),
 	)
 }

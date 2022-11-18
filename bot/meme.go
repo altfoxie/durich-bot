@@ -9,12 +9,10 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/altfoxie/durich-bot/idraw"
 	"github.com/altfoxie/durich-bot/vkapi"
-	"github.com/boltdb/bolt"
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
 	"github.com/nfnt/resize"
@@ -62,18 +60,11 @@ func (b *Bot) onMeme(message *telego.Message) error {
 		return err
 	}
 
-	zhmyh := false
-	b.db.View(func(tx *bolt.Tx) error {
-		if bk := tx.Bucket([]byte("zhmyh")); bk != nil {
-			id := []byte(strconv.FormatInt(message.From.ID, 10))
-			if v := bk.Get(id); len(v) > 0 {
-				zhmyh = v[0] == 1
-			}
-		}
-		return nil
-	})
-
-	var meme io.Reader
+	zhmyh := b.getToggleValue("zhmyh", message.From.ID)
+	var (
+		meme       io.Reader
+		buttonLink string
+	)
 	if len(message.Photo) > 0 {
 		meme, err = b.makeMemeFromPhoto(
 			message.Photo[len(message.Photo)-1],
@@ -81,7 +72,7 @@ func (b *Bot) onMeme(message *telego.Message) error {
 			zhmyh,
 		)
 	} else {
-		meme, err = makeMeme(message.Text, zhmyh)
+		meme, buttonLink, err = makeMeme(message.Text, zhmyh)
 	}
 	if err != nil {
 		errText := "🤯 неизвестная ошибка ж есть"
@@ -116,26 +107,36 @@ func (b *Bot) onMeme(message *telego.Message) error {
 		log.Println("DeleteMessage error:", err)
 	}
 
-	return lo.T2(b.SendPhoto(
-		tu.Photo(
-			tu.ID(message.Chat.ID),
-			tu.File(tu.NameReader(meme, "meme.png")),
-		).WithReplyToMessageID(message.MessageID),
-	)).B
+	photo := tu.Photo(
+		tu.ID(message.Chat.ID),
+		tu.File(tu.NameReader(meme, "meme.png")),
+	).WithReplyToMessageID(message.MessageID)
+	if buttonLink != "" && b.getToggleValue("link", message.From.ID, true) {
+		photo = photo.WithReplyMarkup(tu.InlineKeyboard(
+			tu.InlineKeyboardRow(
+				tu.InlineKeyboardButton("🔗 Ссылка").WithURL(buttonLink),
+			),
+		))
+	}
+	return lo.T2(b.SendPhoto(photo)).B
 }
 
-func makeMeme(query string, zhmyh bool) (io.Reader, error) {
+func makeMeme(query string, zhmyh bool) (io.Reader, string, error) {
 	photo, err := vkapi.SearchRandomPhoto(strings.Split(query, "\n")[0])
 	if err != nil {
-		return nil, wrapError(err, errImageNotFound)
+		return nil, "", wrapError(err, errImageNotFound)
 	}
 
 	best := photo.BestSize()
 	if best == nil {
-		return nil, wrapError(err, errBestSizeNotFound)
+		return nil, "", wrapError(err, errBestSizeNotFound)
 	}
 
-	return makeMemeFromURL(best.URL, query, zhmyh)
+	r, err := makeMemeFromURL(best.URL, query, zhmyh)
+	if err != nil {
+		return nil, "", err
+	}
+	return r, fmt.Sprintf("https://vk.com/photo%d_%d", photo.OwnerID, photo.ID), nil
 }
 
 func (b *Bot) makeMemeFromPhoto(

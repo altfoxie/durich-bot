@@ -37,7 +37,17 @@ func (b *Bot) Start() error {
 	}
 
 	bh.Handle(wrapMessageHandler(b.onStart), th.CommandEqual("start"))
-	bh.Handle(wrapMessageHandler(b.onZhmyh), th.CommandEqual("zhmyh"))
+	bh.Handle(wrapMessageHandler(b.onToggle(toggleOptions{
+		key:            "zhmyh",
+		enableMessage:  "теперь ты жмыхаешь картинки",
+		disableMessage: "больше ты не жмыхаешь картинки",
+	})), th.CommandEqual("zhmyh"))
+	bh.Handle(wrapMessageHandler(b.onToggle(toggleOptions{
+		key:            "link",
+		defaultValue:   true,
+		enableMessage:  "теперь я буду отправлять ссылки на картинки",
+		disableMessage: "больше я не буду отправлять ссылки на картинки",
+	})), th.CommandEqual("link"))
 	bh.Handle(wrapMessageHandler(b.onMeme), func(update telego.Update) bool {
 		return update.Message != nil && len(update.Message.Photo) > 0
 	})
