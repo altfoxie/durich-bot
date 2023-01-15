@@ -14,10 +14,17 @@ type Bot struct {
 	db *bolt.DB
 }
 
-func New(token string, db *bolt.DB) (*Bot, error) {
+func New(api, token string, db *bolt.DB) (*Bot, error) {
+	options := []telego.BotOption{
+		telego.WithDefaultLogger(os.Getenv("TELEGO_DEBUG") != "", true),
+	}
+	if api != "" {
+		options = append(options, telego.WithAPIServer(api))
+	}
+
 	bot, err := telego.NewBot(
 		token,
-		telego.WithDefaultLogger(os.Getenv("TELEGO_DEBUG") != "", true),
+		options...,
 	)
 	if err != nil {
 		return nil, err

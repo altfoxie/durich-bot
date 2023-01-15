@@ -13,13 +13,17 @@ import (
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	db, err := bolt.Open("bot.db", 0600, nil)
+	db, err := bolt.Open("bot.db", 0o600, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	b, err := bot.New(os.Getenv("TOKEN"), db)
+	b, err := bot.New(
+		os.Getenv("API_URL"),
+		os.Getenv("TOKEN"),
+		db,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
