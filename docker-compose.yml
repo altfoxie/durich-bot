@@ -5,9 +5,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    networks:
+      - tgbotapi
     environment:
       - TOKEN=${TOKEN}
       - VK_TOKEN=${VK_TOKEN}
       - CHANNEL_ID=${CHANNEL_ID}
       - TELEGO_DEBUG=${TELEGO_DEBUG}
       - API_URL=${API_URL}
+
+networks:
+  tgbotapi:
+    external: true
