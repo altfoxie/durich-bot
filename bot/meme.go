@@ -5,14 +5,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/altfoxie/durich-bot/vkapi"
-	"github.com/gotd/td/telegram/message/markup"
 	"image/jpeg"
 	"image/png"
 	"io"
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/altfoxie/durich-bot/vkapi"
+	"github.com/gotd/td/telegram/message/markup"
 
 	"github.com/altfoxie/durich-bot/idraw"
 	"github.com/cognusion/go-utils/writeatbuffer"
@@ -92,12 +93,12 @@ func (b *Bot) onMeme(ctx context.Context, msg *tg.Message, builder *message.Requ
 
 		reader = bytes.NewReader(buf.Bytes())
 	} else {
-		if reader, buttonLink, err = b.memeSearch(msg.Message); err != nil {
-			return err
-		}
+		reader, buttonLink, err = b.memeSearch(msg.Message)
 	}
 
-	meme, err := b.onMemeReader(msg.Message, peer.UserID, reader)
+	if err == nil {
+		reader, err = b.onMemeReader(msg.Message, peer.UserID, reader)
+	}
 	if err != nil {
 		errText := "🤯 неизвестная ошибка ж есть"
 		switch {
@@ -133,7 +134,7 @@ func (b *Bot) onMeme(ctx context.Context, msg *tg.Message, builder *message.Requ
 		}
 	}
 
-	_, err = builder.Upload(message.FromReader("meme.png", meme)).Photo(ctx)
+	_, err = builder.Upload(message.FromReader("meme.png", reader)).Photo(ctx)
 	return err
 }
 
