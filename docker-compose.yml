@@ -11,4 +11,4 @@ services:
       - TOKEN=${TOKEN}
       - VK_TOKEN=${VK_TOKEN}
     volumes:
-      - ./session.json:/app/session.json
+      - ${PWD}/session.json:/app/session.json
