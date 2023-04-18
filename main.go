@@ -23,7 +23,6 @@ func main() {
 	defer db.Close()
 
 	b, err := bot.New(
-		os.Getenv("API_URL"),
 		os.Getenv("TOKEN"),
 		db,
 	)
