@@ -15,5 +15,6 @@ FROM alpine
 WORKDIR /app
 
 COPY --from=builder /src/durich-bot .
+RUN touch session.json
 
 ENTRYPOINT ["/app/durich-bot"]
