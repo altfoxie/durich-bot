@@ -16,7 +16,12 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	db, err := bolt.Open("bot.db", 0o600, nil)
+	p := os.Getenv("DB")
+	if p == "" {
+		p = "bot.db"
+	}
+
+	db, err := bolt.Open(p, 0o600, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

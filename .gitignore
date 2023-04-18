@@ -25,3 +25,4 @@ go.work
 .idea
 bot.db
 session.json
+/data
