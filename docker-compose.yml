@@ -5,15 +5,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    networks:
-      - tgbotapi
     environment:
+      - APP_ID=${APP_ID}
+      - APP_HASH=${APP_HASH}
       - TOKEN=${TOKEN}
       - VK_TOKEN=${VK_TOKEN}
-      - CHANNEL_ID=${CHANNEL_ID}
-      - TELEGO_DEBUG=${TELEGO_DEBUG}
-      - API_URL=${API_URL}
-
-networks:
-  tgbotapi:
-    external: true
+    volumes:
+      - ./session.json:/app/session.json
