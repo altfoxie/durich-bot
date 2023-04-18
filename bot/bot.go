@@ -1,87 +1,84 @@
 package bot
 
 import (
-	"log"
+	"context"
+	"errors"
 	"os"
+	"strconv"
 
 	"github.com/boltdb/bolt"
-	"github.com/mymmrac/telego"
-	th "github.com/mymmrac/telego/telegohandler"
+	"github.com/gotd/contrib/bg"
+	"github.com/gotd/td/session"
+	"github.com/gotd/td/telegram"
+	"github.com/gotd/td/tg"
 )
 
+const (
+	defaultAppID   = 6
+	defaultAppHash = "eb06d4abfb49dc3eeb1aeb98ae0f581e"
+)
+
+// Workaround to reduce boilerplate.
+var ctx = context.Background()
+
 type Bot struct {
-	*telego.Bot
-	db *bolt.DB
+	token  string
+	client *telegram.Client
+	db     *bolt.DB
+
+	stop       bg.StopFunc
+	dispatcher tg.UpdateDispatcher
+
+	self     *tg.User
+	username string
 }
 
-func New(api, token string, db *bolt.DB) (*Bot, error) {
-	options := []telego.BotOption{
-		telego.WithDefaultLogger(os.Getenv("TELEGO_DEBUG") != "", true),
+func New(token string, db *bolt.DB) (*Bot, error) {
+	id, hash := defaultAppID, defaultAppHash
+	if idEnv, hashEnv := os.Getenv("APP_ID"), os.Getenv("APP_HASH"); idEnv != "" && hashEnv != "" {
+		id, _ = strconv.Atoi(idEnv)
+		hash = hashEnv
 	}
-	if api != "" {
-		options = append(options, telego.WithAPIServer(api))
+	if id <= 0 || hash == "" {
+		return nil, errors.New("invalid app id or hash")
 	}
 
-	bot, err := telego.NewBot(
-		token,
-		options...,
-	)
-	if err != nil {
-		return nil, err
+	dispatcher := tg.NewUpdateDispatcher()
+
+	s := os.Getenv("SESSION")
+	if s == "" {
+		s = "session.json"
 	}
-	return &Bot{bot, db}, nil
+
+	client := telegram.NewClient(id, hash, telegram.Options{
+		SessionStorage: &session.FileStorage{Path: s},
+		UpdateHandler:  dispatcher,
+	})
+
+	return &Bot{
+		token:      token,
+		client:     client,
+		db:         db,
+		dispatcher: dispatcher,
+	}, nil
 }
 
 func (b *Bot) Start() error {
-	updates, err := b.UpdatesViaLongPulling(nil)
+	stop, err := bg.Connect(b.client)
 	if err != nil {
 		return err
 	}
+	b.stop = stop
 
-	bh, err := th.NewBotHandler(b.Bot, updates)
+	auth, err := b.client.Auth().Bot(ctx, b.token)
 	if err != nil {
 		return err
 	}
+	b.self = auth.GetUser().(*tg.User)
+	b.username = b.self.Username
 
-	bh.Handle(wrapMessageHandler(b.onStart), th.CommandEqual("start"))
-	bh.Handle(wrapMessageHandler(b.onToggle(toggleOptions{
-		key:            "zhmyh",
-		enableMessage:  "теперь ты жмыхаешь картинки",
-		disableMessage: "больше ты не жмыхаешь картинки",
-	})), th.CommandEqual("zhmyh"))
-	bh.Handle(wrapMessageHandler(b.onToggle(toggleOptions{
-		key:            "link",
-		defaultValue:   true,
-		enableMessage:  "теперь я буду отправлять ссылки на картинки",
-		disableMessage: "больше я не буду отправлять ссылки на картинки",
-	})), th.CommandEqual("link"))
-	bh.Handle(wrapMessageHandler(b.onMeme), func(update telego.Update) bool {
-		return update.Message != nil && len(update.Message.Photo) > 0
-	})
-	bh.Handle(wrapMessageHandler(b.onMeme), th.AnyMessageWithText())
+	b.dispatcher.OnNewMessage(b.onNewMessage)
+	b.dispatcher.OnBotInlineQuery(b.onInlineQuery)
 
-	bh.Handle(wrapInlineQueryHandler(b.onInlineQuery), th.AnyInlineQuery())
-
-	bh.Start()
 	return nil
-}
-
-type messageHandler = func(message *telego.Message) error
-
-func wrapMessageHandler(h messageHandler) th.Handler {
-	return func(_ *telego.Bot, update telego.Update) {
-		if err := h(update.Message); err != nil {
-			log.Println("Message handler error:", err)
-		}
-	}
-}
-
-type inlineQueryHandler = func(query *telego.InlineQuery) error
-
-func wrapInlineQueryHandler(h inlineQueryHandler) th.Handler {
-	return func(_ *telego.Bot, update telego.Update) {
-		if err := h(update.InlineQuery); err != nil {
-			log.Println("Inline query handler error:", err)
-		}
-	}
 }

@@ -1,25 +1,32 @@
 package bot
 
 import (
+	"context"
+	"crypto/rand"
 	"errors"
-	"os"
+	"log"
 
-	"github.com/mymmrac/telego"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/gotd/td/telegram/message/inline"
+	"github.com/gotd/td/telegram/message/markup"
+	"github.com/gotd/td/telegram/uploader"
+	"github.com/gotd/td/tg"
 )
 
-func (b *Bot) onInlineQuery(query *telego.InlineQuery) error {
-	answer := tu.InlineQuery(query.ID).WithIsPersonal().WithCacheTime(-1)
+func (b *Bot) onInlineQuery(ctx context.Context, entities tg.Entities, update *tg.UpdateBotInlineQuery) error {
+	builder := inline.New(b.client.API(), rand.Reader, update.QueryID).
+		CacheTimeSeconds(-1).
+		Private(true)
 
-	if query.Query == "" {
-		return b.AnswerInlineQuery(
-			answer.WithSwitchPmText("напиши прекол ж есть").
-				WithSwitchPmParameter("lol"),
-		)
+	if update.Query == "" {
+		_, err := builder.SwitchPM("напиши прекол ж есть", "lol").Set(ctx)
+		return err
 	}
 
-	zhmyh := b.getToggleValue("zhmyh", query.From.ID)
-	meme, buttonLink, err := makeMeme(query.Query, zhmyh)
+	reader, link, err := b.memeSearch(update.Query)
+	_ = link
+	if err == nil {
+		reader, err = b.onMemeReader(update.Query, update.UserID, reader)
+	}
 	if err != nil {
 		errText := "неизвестная ошибка ж есть"
 		switch {
@@ -36,34 +43,48 @@ func (b *Bot) onInlineQuery(query *telego.InlineQuery) error {
 		case errorIs(err, errEncode):
 			errText = "не отдекодилось ж есть"
 		}
-		if err := b.AnswerInlineQuery(answer.WithSwitchPmText(errText).WithSwitchPmParameter("lol")); err != nil {
+		if _, err := builder.SwitchPM(errText, "lol").Set(ctx); err != nil {
 			return err
 		}
 		return err
 	}
 
-	msg, err := b.SendPhoto(
-		tu.Photo(
-			tu.Username(os.Getenv("CHANNEL_ID")),
-			tu.File(tu.NameReader(meme, "meme.png")),
-		),
-	)
+	file, err := uploader.NewUploader(b.client.API()).FromReader(ctx, "meme.png", reader)
 	if err != nil {
 		return err
 	}
-	if len(msg.Photo) == 0 {
-		return errors.New("no photo in message")
+
+	media, err := b.client.API().MessagesUploadMedia(ctx, &tg.MessagesUploadMediaRequest{
+		Peer: b.self.AsInputPeer(),
+		Media: &tg.InputMediaUploadedPhoto{
+			File: file,
+		},
+	})
+	if err != nil {
+		return err
 	}
 
-	result := tu.ResultCachedPhoto("meme", msg.Photo[0].FileID)
-	if buttonLink != "" && b.getToggleValue("link", query.From.ID, true) {
-		result = result.WithReplyMarkup(tu.InlineKeyboard(
-			tu.InlineKeyboardRow(
-				tu.InlineKeyboardButton("🔗 Ссылка").WithURL(buttonLink),
-			),
-		))
+	photo, ok := media.(*tg.MessageMediaPhoto).Photo.(*tg.Photo)
+	if !ok {
+		return errors.New("unexpected inline media")
 	}
-	return b.AnswerInlineQuery(
-		answer.WithResults(result),
-	)
+
+	var replyMarkup tg.ReplyMarkupClass
+	if link != "" && b.getToggleValue("link", update.UserID, true) {
+		replyMarkup = markup.InlineRow(markup.URL("🔗 Ссылка", link))
+	}
+
+	result := inline.Photo(&tg.InputPhoto{
+		ID:            photo.ID,
+		AccessHash:    photo.AccessHash,
+		FileReference: photo.FileReference,
+	}, inline.ResultMessage(&tg.InputBotInlineMessageMediaAuto{
+		ReplyMarkup: replyMarkup,
+	}))
+
+	_, err = builder.Gallery(true).Set(ctx, result)
+	if err != nil {
+		log.Println("Inline query error:", err)
+	}
+	return err
 }

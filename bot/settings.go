@@ -1,12 +1,13 @@
 package bot
 
 import (
+	"context"
+	"errors"
 	"strconv"
 
 	"github.com/boltdb/bolt"
-	"github.com/mymmrac/telego"
-	tu "github.com/mymmrac/telego/telegoutil"
-	"github.com/samber/lo"
+	"github.com/gotd/td/telegram/message"
+	"github.com/gotd/td/tg"
 )
 
 type toggleOptions struct {
@@ -15,50 +16,47 @@ type toggleOptions struct {
 	enableMessage, disableMessage string
 }
 
-func (b *Bot) onToggle(opts toggleOptions) messageHandler {
-	return func(message *telego.Message) error {
-		return b.db.Update(func(tx *bolt.Tx) error {
-			bk, err := tx.CreateBucketIfNotExists([]byte(opts.key))
-			if err != nil {
-				return err
-			}
+func (b *Bot) onToggle(ctx context.Context, message *tg.Message, builder *message.RequestBuilder, opts toggleOptions) error {
+	return b.db.Update(func(tx *bolt.Tx) error {
+		bk, err := tx.CreateBucketIfNotExists([]byte(opts.key))
+		if err != nil {
+			return err
+		}
 
-			id := []byte(strconv.FormatInt(message.From.ID, 10))
-			v := bk.Get(id)
+		user, ok := message.GetPeerID().(*tg.PeerUser)
+		if !ok {
+			return errors.New("unexpected peer type")
+		}
 
-			def := []byte{0}
-			if opts.defaultValue {
-				def = []byte{1}
-			}
+		id := []byte(strconv.FormatInt(user.UserID, 10))
+		v := bk.Get(id)
 
-			if v == nil {
-				v = def
-			}
-			if v[0] == 0 {
-				v = []byte{1}
-			} else {
-				v = []byte{0}
-			}
+		def := []byte{0}
+		if opts.defaultValue {
+			def = []byte{1}
+		}
 
-			msg := opts.enableMessage
-			if v[0] == 0 {
-				msg = opts.disableMessage
-			}
+		if v == nil {
+			v = def
+		}
+		if v[0] == 0 {
+			v = []byte{1}
+		} else {
+			v = []byte{0}
+		}
 
-			if err = bk.Put(id, v); err != nil {
-				return err
-			}
+		msg := opts.enableMessage
+		if v[0] == 0 {
+			msg = opts.disableMessage
+		}
 
-			return lo.T2(
-				b.SendMessage(
-					tu.Message(
-						tu.ID(message.Chat.ID),
-						msg,
-					),
-				),
-			).B
-		})
-	}
+		if err = bk.Put(id, v); err != nil {
+			return err
+		}
+
+		_, err = builder.Text(ctx, msg)
+		return err
+	})
 }
 
 func (b *Bot) getToggleValue(key string, id int64, defaultValue ...bool) (value bool) {

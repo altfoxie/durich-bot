@@ -1,19 +1,13 @@
 package bot
 
 import (
-	"github.com/mymmrac/telego"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"context"
 
-	"github.com/samber/lo"
+	"github.com/gotd/td/telegram/message"
+	"github.com/gotd/td/tg"
 )
 
-func (b *Bot) onStart(message *telego.Message) error {
-	return lo.T2(
-		b.SendMessage(
-			tu.Message(
-				tu.ID(message.Chat.ID),
-				"привет отправь текст я найду картинку и сделаю ржаку",
-			),
-		),
-	).B
+func (b *Bot) onStart(ctx context.Context, message *tg.Message, builder *message.RequestBuilder) error {
+	_, err := builder.Text(ctx, "привет отправь текст я найду картинку и сделаю ржаку")
+	return err
 }

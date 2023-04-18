@@ -2,8 +2,11 @@ package bot
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"github.com/altfoxie/durich-bot/vkapi"
+	"github.com/gotd/td/telegram/message/markup"
 	"image/jpeg"
 	"image/png"
 	"io"
@@ -12,11 +15,11 @@ import (
 	"strings"
 
 	"github.com/altfoxie/durich-bot/idraw"
-	"github.com/altfoxie/durich-bot/vkapi"
-	"github.com/mymmrac/telego"
-	tu "github.com/mymmrac/telego/telegoutil"
+	"github.com/cognusion/go-utils/writeatbuffer"
+	"github.com/gotd/td/telegram/downloader"
+	"github.com/gotd/td/telegram/message"
+	"github.com/gotd/td/tg"
 	"github.com/nfnt/resize"
-	"github.com/samber/lo"
 )
 
 var (
@@ -51,29 +54,50 @@ func errorIs(err, target error) bool {
 	return errors.Is(err, target)
 }
 
-func (b *Bot) onMeme(message *telego.Message) error {
-	msg, err := b.SendMessage(
-		tu.Message(tu.ID(message.Chat.ID), "😸 ща прикол сделаю....").
-			WithReplyToMessageID(message.MessageID),
-	)
+func (b *Bot) onMeme(ctx context.Context, msg *tg.Message, builder *message.RequestBuilder) error {
+	sentMsgUpdate, err := builder.ReplyMsg(msg).Text(ctx, "😸 ща прикол сделаю....")
 	if err != nil {
 		return err
 	}
 
-	zhmyh := b.getToggleValue("zhmyh", message.From.ID)
+	sentMsg, ok := sentMsgUpdate.(*tg.UpdateShortSentMessage)
+	if !ok {
+		return errors.New("unexpected message type")
+	}
+
+	peer, ok := msg.GetPeerID().(*tg.PeerUser)
+	if !ok {
+		return errors.New("unexpected peer type")
+	}
+
 	var (
-		meme       io.Reader
+		reader     io.Reader
 		buttonLink string
 	)
-	if len(message.Photo) > 0 {
-		meme, err = b.makeMemeFromPhoto(
-			message.Photo[len(message.Photo)-1],
-			message.Caption,
-			zhmyh,
-		)
+	if msg.Media != nil {
+		photo, ok := msg.Media.(*tg.MessageMediaPhoto).Photo.(*tg.Photo)
+		if !ok {
+			return errors.New("unexpected media type")
+		}
+
+		buf := writeatbuffer.NewBuffer(make([]byte, 0, 1024*1024))
+		if _, err = downloader.NewDownloader().Download(b.client.API(), &tg.InputPhotoFileLocation{
+			ID:            photo.ID,
+			AccessHash:    photo.AccessHash,
+			FileReference: photo.FileReference,
+			ThumbSize:     "x",
+		}).Parallel(ctx, buf); err != nil {
+			return wrapError(err, errImageGet)
+		}
+
+		reader = bytes.NewReader(buf.Bytes())
 	} else {
-		meme, buttonLink, err = makeMeme(message.Text, zhmyh)
+		if reader, buttonLink, err = b.memeSearch(msg.Message); err != nil {
+			return err
+		}
 	}
+
+	meme, err := b.onMemeReader(msg.Message, peer.UserID, reader)
 	if err != nil {
 		errText := "🤯 неизвестная ошибка ж есть"
 		switch {
@@ -90,39 +114,31 @@ func (b *Bot) onMeme(message *telego.Message) error {
 		case errorIs(err, errEncode):
 			errText = "🤯 не отдекодилось ж есть"
 		}
-		if _, err := b.EditMessageText(&telego.EditMessageTextParams{
-			ChatID:    tu.ID(msg.Chat.ID),
-			MessageID: msg.MessageID,
-			Text:      errText,
-		}); err != nil {
+		if _, err := builder.Edit(sentMsg.ID).Text(ctx, errText); err != nil {
 			return err
 		}
 		return err
 	}
 
-	if err = b.DeleteMessage(&telego.DeleteMessageParams{
-		ChatID:    tu.ID(msg.Chat.ID),
-		MessageID: msg.MessageID,
+	if _, err = b.client.API().MessagesDeleteMessages(ctx, &tg.MessagesDeleteMessagesRequest{
+		ID:     []int{sentMsg.ID},
+		Revoke: true,
 	}); err != nil {
-		log.Println("DeleteMessage error:", err)
+		log.Println("delete message error:", err)
 	}
 
-	photo := tu.Photo(
-		tu.ID(message.Chat.ID),
-		tu.File(tu.NameReader(meme, "meme.png")),
-	).WithReplyToMessageID(message.MessageID)
-	if buttonLink != "" && b.getToggleValue("link", message.From.ID, true) {
-		photo = photo.WithReplyMarkup(tu.InlineKeyboard(
-			tu.InlineKeyboardRow(
-				tu.InlineKeyboardButton("🔗 Ссылка").WithURL(buttonLink),
-			),
-		))
+	if buttonLink != "" && b.getToggleValue("link", peer.UserID, true) {
+		*builder = message.RequestBuilder{
+			Builder: *builder.Markup(markup.InlineRow(markup.URL("🔗 Ссылка", buttonLink))),
+		}
 	}
-	return lo.T2(b.SendPhoto(photo)).B
+
+	_, err = builder.Upload(message.FromReader("meme.png", meme)).Photo(ctx)
+	return err
 }
 
-func makeMeme(query string, zhmyh bool) (io.Reader, string, error) {
-	photo, err := vkapi.SearchRandomPhoto(strings.Split(query, "\n")[0])
+func (b *Bot) memeSearch(text string) (io.Reader, string, error) {
+	photo, err := vkapi.SearchRandomPhoto(strings.Split(text, "\n")[0])
 	if err != nil {
 		return nil, "", wrapError(err, errImageNotFound)
 	}
@@ -132,54 +148,26 @@ func makeMeme(query string, zhmyh bool) (io.Reader, string, error) {
 		return nil, "", wrapError(err, errBestSizeNotFound)
 	}
 
-	r, err := makeMemeFromURL(best.URL, query, zhmyh)
+	resp, err := http.Get(best.URL)
 	if err != nil {
-		return nil, "", err
+		return nil, "", wrapError(err, errImageGet)
 	}
-	return r, fmt.Sprintf("https://vk.com/photo%d_%d", photo.OwnerID, photo.ID), nil
+
+	return resp.Body, fmt.Sprintf("https://vk.com/photo%d_%d", photo.OwnerID, photo.ID), nil
 }
 
-func (b *Bot) makeMemeFromPhoto(
-	photo telego.PhotoSize,
-	text string,
-	zhmyh bool,
-) (io.Reader, error) {
-	file, err := b.GetFile(&telego.GetFileParams{
-		FileID: photo.FileID,
-	})
-	if err != nil {
-		return nil, wrapError(err, errImageGet)
-	}
-
-	return makeMemeFromURL(
-		fmt.Sprintf(
-			"https://api.telegram.org/file/bot%s/%s",
-			b.Token(),
-			file.FilePath,
-		),
-		text,
-		zhmyh,
-	)
-}
-
-func makeMemeFromURL(url, text string, zhmyh bool) (io.Reader, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, wrapError(err, errImageGet)
-	}
-
-	img, err := jpeg.Decode(resp.Body)
+func (b *Bot) onMemeReader(text string, userID int64, reader io.Reader) (io.Reader, error) {
+	img, err := jpeg.Decode(reader)
 	if err != nil {
 		return nil, wrapError(err, errDecode)
 	}
 
+	zhmyh := b.getToggleValue("zhmyh", userID)
 	if zhmyh {
 		img = resize.Resize(600, 400, img, resize.Bilinear)
 	}
 
 	layers := strings.Split(text, "\n\n")
-	fmt.Println(layers)
-
 	for i, layer := range layers {
 		lines := strings.SplitN(layer, "\n", 2)
 		secondLine := ""
@@ -196,6 +184,5 @@ func makeMemeFromURL(url, text string, zhmyh bool) (io.Reader, error) {
 	if err := png.Encode(buf, img); err != nil {
 		return nil, wrapError(err, errEncode)
 	}
-
 	return buf, nil
 }

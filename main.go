@@ -8,9 +8,12 @@ import (
 
 	"github.com/altfoxie/durich-bot/bot"
 	"github.com/boltdb/bolt"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	godotenv.Load()
+
 	rand.Seed(time.Now().UnixNano())
 
 	db, err := bolt.Open("bot.db", 0o600, nil)
@@ -31,4 +34,6 @@ func main() {
 	if err = b.Start(); err != nil {
 		log.Fatal(err)
 	}
+
+	select {}
 }
