@@ -56,6 +56,20 @@ func errorIs(err, target error) bool {
 }
 
 func (b *Bot) onMeme(ctx context.Context, msg *tg.Message, builder *message.RequestBuilder) error {
+	var photo *tg.Photo
+	if msg.Media != nil {
+		mediaPhoto, ok := msg.Media.(*tg.MessageMediaPhoto)
+		if !ok {
+			return errors.New("unexpected media type")
+		}
+
+		if photo, ok = mediaPhoto.Photo.(*tg.Photo); !ok {
+			return errors.New("unexpected media type")
+		}
+	} else if msg.Message == "" {
+		return errors.New("empty message")
+	}
+
 	sentMsgUpdate, err := builder.ReplyMsg(msg).Text(ctx, "😸 ща прикол сделаю....")
 	if err != nil {
 		return err
@@ -75,12 +89,7 @@ func (b *Bot) onMeme(ctx context.Context, msg *tg.Message, builder *message.Requ
 		reader     io.Reader
 		buttonLink string
 	)
-	if msg.Media != nil {
-		photo, ok := msg.Media.(*tg.MessageMediaPhoto).Photo.(*tg.Photo)
-		if !ok {
-			return errors.New("unexpected media type")
-		}
-
+	if photo != nil {
 		buf := writeatbuffer.NewBuffer(make([]byte, 0, 1024*1024))
 		if _, err = downloader.NewDownloader().Download(b.client.API(), &tg.InputPhotoFileLocation{
 			ID:            photo.ID,
