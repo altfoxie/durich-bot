@@ -32,6 +32,7 @@ func (b *Bot) onNewMessage(ctx context.Context, entities tg.Entities, update *tg
 		case strings.EqualFold(command, "/zhmyh"):
 			err = b.onToggle(ctx, m, builder, toggleOptions{
 				key:            "zhmyh",
+				defaultValue: 	true,
 				enableMessage:  "теперь ты жмыхаешь картинки",
 				disableMessage: "больше ты не жмыхаешь картинки",
 			})
