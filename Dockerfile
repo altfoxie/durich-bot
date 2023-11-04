@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o durich-bot
+RUN go build -v -o durich-bot
 
 FROM alpine
 
