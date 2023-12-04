@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 )
 
 type response[T any] struct {
@@ -80,5 +81,22 @@ func SearchRandomPhoto(query string) (*Photo, error) {
 		return nil, errors.New("vkapi: no photos found")
 	}
 
-	return &r.Response.Items[rand.Intn(len(r.Response.Items))], nil
+	unique := make(map[string]Photo, len(r.Response.Items)) // URL -> Photo
+	for _, p := range r.Response.Items {
+		if s := p.BestSize(); s != nil {
+			unique[s.URL] = p
+		}
+	}
+
+	var list []Photo
+	for _, p := range unique {
+		list = append(list, p)
+	}
+	if len(list) == 0 {
+		// Old method
+		list = r.Response.Items
+	}
+
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return &list[rnd.Intn(len(list))], nil
 }
