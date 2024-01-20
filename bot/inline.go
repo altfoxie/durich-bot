@@ -22,7 +22,7 @@ func (b *Bot) onInlineQuery(ctx context.Context, entities tg.Entities, update *t
 		return err
 	}
 
-	reader, link, err := b.memeSearch(update.Query)
+	reader, link, err := b.memeSearch(update.Query, update.UserID)
 	_ = link
 	if err == nil {
 		reader, err = b.onMemeReader(update.Query, update.UserID, reader)

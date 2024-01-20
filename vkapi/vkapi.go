@@ -55,11 +55,12 @@ type PhotoSize struct {
 	URL    string `json:"url"`
 }
 
-func SearchRandomPhoto(query string) (*Photo, error) {
+func SearchPhoto(query string, random bool) (*Photo, error) {
 	resp, err := http.Get(
 		"https://api.vk.com/method/photos.search?" + url.Values{
 			"access_token": {os.Getenv("VK_TOKEN")},
 			"q":            {query},
+			"sort":         {"0"},
 			// "count":        {"5"},
 			"v": {"5.123"},
 		}.Encode(),
@@ -79,6 +80,14 @@ func SearchRandomPhoto(query string) (*Photo, error) {
 
 	if len(r.Response.Items) == 0 {
 		return nil, errors.New("vkapi: no photos found")
+	}
+
+	if !random {
+		for _, p := range r.Response.Items {
+			if s := p.BestSize(); s != nil {
+				return &p, nil
+			}
+		}
 	}
 
 	unique := make(map[string]Photo, len(r.Response.Items)) // URL -> Photo

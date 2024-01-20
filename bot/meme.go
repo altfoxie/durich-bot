@@ -102,7 +102,7 @@ func (b *Bot) onMeme(ctx context.Context, msg *tg.Message, builder *message.Requ
 
 		reader = bytes.NewReader(buf.Bytes())
 	} else {
-		reader, buttonLink, err = b.memeSearch(msg.Message)
+		reader, buttonLink, err = b.memeSearch(msg.Message, peer.UserID)
 	}
 
 	if err == nil {
@@ -147,8 +147,8 @@ func (b *Bot) onMeme(ctx context.Context, msg *tg.Message, builder *message.Requ
 	return err
 }
 
-func (b *Bot) memeSearch(text string) (io.Reader, string, error) {
-	photo, err := vkapi.SearchRandomPhoto(strings.Split(text, "\n")[0])
+func (b *Bot) memeSearch(text string, userID int64) (io.Reader, string, error) {
+	photo, err := vkapi.SearchPhoto(strings.Split(text, "\n")[0], b.getToggleValue("last", userID))
 	if err != nil {
 		return nil, "", wrapError(err, errImageNotFound)
 	}
