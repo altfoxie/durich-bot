@@ -46,7 +46,7 @@ func (b *Bot) onNewMessage(ctx context.Context, entities tg.Entities, update *tg
 		case strings.EqualFold(command, "/last"):
 			err = b.onToggle(ctx, m, builder, toggleOptions{
 				key:            "last",
-				defaultValue:   true,
+				defaultValue:   false,
 				enableMessage:  "теперь я буду использовать последнюю картинку из вкалтакте",
 				disableMessage: "больше я не буду использовать последнюю картинку из вкалтакте. теперь тока случайную...",
 			})
