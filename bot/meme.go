@@ -148,7 +148,7 @@ func (b *Bot) onMeme(ctx context.Context, msg *tg.Message, builder *message.Requ
 }
 
 func (b *Bot) memeSearch(text string, userID int64) (io.Reader, string, error) {
-	photo, err := vkapi.SearchPhoto(strings.Split(text, "\n")[0], b.getToggleValue("last", userID))
+	photo, err := vkapi.SearchPhoto(strings.Split(text, "\n")[0], !b.getToggleValue("last", userID))
 	if err != nil {
 		return nil, "", wrapError(err, errImageNotFound)
 	}
