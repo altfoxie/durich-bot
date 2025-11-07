@@ -10,6 +10,13 @@ import (
 	"github.com/gotd/td/tg"
 )
 
+// Default values for toggle settings
+const (
+	defaultZhmyh = true
+	defaultLink  = true
+	defaultLast  = false
+)
+
 type toggleOptions struct {
 	key                           string
 	defaultValue                  bool

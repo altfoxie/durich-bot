@@ -32,21 +32,21 @@ func (b *Bot) onNewMessage(ctx context.Context, entities tg.Entities, update *tg
 		case strings.EqualFold(command, "/zhmyh"):
 			err = b.onToggle(ctx, m, builder, toggleOptions{
 				key:            "zhmyh",
-				defaultValue:   true,
+				defaultValue:   defaultZhmyh,
 				enableMessage:  "теперь ты жмыхаешь картинки",
 				disableMessage: "больше ты не жмыхаешь картинки",
 			})
 		case strings.EqualFold(command, "/link"):
 			err = b.onToggle(ctx, m, builder, toggleOptions{
 				key:            "link",
-				defaultValue:   true,
+				defaultValue:   defaultLink,
 				enableMessage:  "теперь я буду отправлять ссылки на картинки",
 				disableMessage: "больше я не буду отправлять ссылки на картинки",
 			})
 		case strings.EqualFold(command, "/last"):
 			err = b.onToggle(ctx, m, builder, toggleOptions{
 				key:            "last",
-				defaultValue:   false,
+				defaultValue:   defaultLast,
 				enableMessage:  "теперь я буду использовать последнюю картинку из вкалтакте",
 				disableMessage: "больше я не буду использовать последнюю картинку из вкалтакте. теперь тока случайную...",
 			})

@@ -5,21 +5,21 @@ go 1.18
 require (
 	github.com/WelcomerTeam/WelcomerImages v0.0.0-20210412213632-592b805315f1
 	github.com/boltdb/bolt v1.3.1
+	github.com/cognusion/go-utils v1.2.0
 	github.com/gotd/contrib v0.13.0
 	github.com/gotd/td v0.75.0
+	github.com/joho/godotenv v1.5.1
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	golang.org/x/image v0.0.0-20220722155232-062f8c9fd539
 )
 
 require (
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
-	github.com/cognusion/go-utils v1.2.0 // indirect
 	github.com/go-faster/errors v0.6.1 // indirect
 	github.com/go-faster/jx v0.40.0 // indirect
 	github.com/go-faster/xor v0.3.0 // indirect
 	github.com/gotd/ige v0.2.2 // indirect
 	github.com/gotd/neo v0.1.5 // indirect
-	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/klauspost/compress v1.15.13 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	go.opentelemetry.io/otel v1.11.2 // indirect
