@@ -70,7 +70,7 @@ func (b *Bot) onInlineQuery(ctx context.Context, entities tg.Entities, update *t
 	}
 
 	var replyMarkup tg.ReplyMarkupClass
-	if link != "" && b.getToggleValue("link", update.UserID, true) {
+	if link != "" && b.getToggleValue("link", update.UserID, defaultLink) {
 		replyMarkup = markup.InlineRow(markup.URL("🔗 Ссылка", link))
 	}
 
